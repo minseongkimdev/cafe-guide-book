@@ -10,7 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flab.cafeguidebook.domain.User;
 import com.flab.cafeguidebook.exception.UserNotFoundException;
-import com.flab.cafeguidebook.extension.UserFixtureProvider;
+import com.flab.cafeguidebook.fixture.UserFixtureProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,6 +38,10 @@ class UserControllerTest {
     @Autowired
     private WebApplicationContext webApplicationContext;
 
+  @BeforeEach
+  public void setUp() {
+    this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+  }
     @BeforeEach
     public void init() {
         this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
@@ -71,6 +75,40 @@ class UserControllerTest {
             .andExpect(status().isBadRequest());
     }
 
+  @Test
+  @DisplayName("이메일, 패스워드가 DB에 등록된 정보와 일치하면 로그인에 성공하고 200을 리턴함")
+  public void signInUserTestWithSuccess(User testUser) throws Exception {
+
+    insertTestUser(testUser);
+
+    MultiValueMap<String, String> paramMap = new LinkedMultiValueMap<>();
+    paramMap.add("email", testUser.getEmail());
+    paramMap.add("password", testUser.getPassword());
+
+    mockMvc.perform(
+        post("/users/signIn")
+            .contentType(MediaType.APPLICATION_JSON)
+            .params(paramMap))
+        .andDo(print())
+        .andExpect(status().isOk());
+  }
+
+  void insertTestUser(User testUser) throws Exception {
+    String content = objectMapper.writeValueAsString(testUser);
+
+    mockMvc.perform(post("/users/signUp")
+        .content(content)
+        .contentType(MediaType.APPLICATION_JSON)
+        .accept(MediaType.APPLICATION_JSON))
+        .andExpect(status().isCreated())
+        .andDo(print());
+  }
+
+
+  @Test
+  @DisplayName("회원정보 조회 통합 테스트")
+  void getUserSuccess(User testUser) throws Exception {
+    String content = objectMapper.writeValueAsString(testUser);
     @Test
     @DisplayName("회원정보 조회 통합 테스트")
     void getUserSuccess(User testUser) throws Exception {
@@ -96,6 +134,27 @@ class UserControllerTest {
     void getUserFailWithNoUserExist(User testUser) throws Exception {
         String content = objectMapper.writeValueAsString(testUser);
 
+    Exception e = assertThrows(NestedServletException.class,
+        () -> {
+          mockMvc.perform(get("/users/" + "NO_EXISTED_EMAIL")
+              .content(content)
+              .contentType(MediaType.APPLICATION_JSON)
+              .accept(MediaType.APPLICATION_JSON))
+              .andExpect(status().isOk())
+              .andDo(print());
+        });
+    assertEquals(UserNotFoundException.class, e.getCause().getClass());
+  }
+
+  @Test
+  @DisplayName("로그아웃 성공시 200을 리턴함")
+  public void signOutTestWithSuccess(User testUser) throws Exception {
+
+    mockMvc.perform(
+        get("/users/signOut"))
+        .andDo(print())
+        .andExpect(status().isOk());
+  }
         Exception e = assertThrows(NestedServletException.class,
             () -> {
                 mockMvc.perform(get("/users/" + "NO_EXISTED_EMAIL")
