@@ -32,6 +32,18 @@ public class UserController {
         userService.signUp(userDTO);
     }
 
+
+
+  @PostMapping(value = "/signIn")
+  public void signIn(String email, String password) {
+    userService.signIn(email, password);
+  }
+
+  @GetMapping(value = "/signOut")
+  public void signOut() {
+    userService.signOut();
+  }
+
     @GetMapping("{email}")
     public UserDTO userInfo(@PathVariable String email) {
         return userService.getUserInfo(email);
